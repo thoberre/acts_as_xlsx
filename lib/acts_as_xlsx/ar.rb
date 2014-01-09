@@ -85,7 +85,7 @@ module Axlsx
 
           data.each do |r|
             row_data = columns.map do |c|
-              if r[c]
+              if r.attributes.has_key? c
                 r[c]
               elsif c.to_s =~ /\./
                 v = r; c.to_s.split('.').each { |method| v = v.nil? ? nil : v.send(method) }; v
