@@ -46,7 +46,8 @@ module Axlsx
       # @option options [Array, Symbol] types an array of Axlsx types for each cell in data rows or a single type that will be applied to all types.
       # @option options [Integer, Array] style The style to pass to Worksheet#add_row
       # @option options [String] i18n The path to i18n attributes. (usually activerecord.attributes)
-      # @option options [Package] package An Axlsx::Package. When this is provided the output will be added to the package as a new sheet.  # @option options [String] name This will be used to name the worksheet added to the package. If it is not provided the name of the table name will be humanized when i18n is not specified or the I18n.t for the table name.
+      # @option options [Package] package An Axlsx::Package. When this is provided the output will be added to the package as a new sheet.
+      # @option options [String] name This will be used to name the worksheet added to the package. If it is not provided the name of the table name will be humanized when i18n is not specified or the I18n.t for the table name.
       # @see Worksheet#add_row
       def to_xlsx(options = {})
 
@@ -63,11 +64,10 @@ module Axlsx
         header_style = p.workbook.styles.add_style(header_style) unless header_style.nil?
         i18n = self.xlsx_i18n == true ? 'activerecord.attributes' : i18n
         sheet_name = options.delete(:name) || (i18n ? I18n.t("#{i18n}.#{table_name.underscore}") : table_name.humanize)
-        data = options.delete(:data) || [*find(:all, options)]
-        data.compact!
-        data.flatten!
+        data = options.delete(:data) || where(options)
 
         return p if data.empty?
+
         p.workbook.add_worksheet(:name=>sheet_name) do |sheet|
 
           col_labels = columns.map do |c|
@@ -83,7 +83,8 @@ module Axlsx
 
           sheet.add_row col_labels, :style=>header_style
 
-          data.each do |r|
+          iterator = data.respond_to?(:find_each) ? [:find_each, {:batch_size=> 500}] : [:each]
+          data.send(*iterator) do |r|
             row_data = columns.map do |c|
               if r.attributes.has_key? c
                 r[c]
